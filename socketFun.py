@@ -3,7 +3,8 @@
 # socketFun.py
 import struct
 import datetime
-
+import copy
+BUFSIZ = 1024
 #socketLink 代表是socket连接类
 #--------------------------------
 #发送订阅请求
@@ -63,26 +64,52 @@ def resolveStockSecurityCode(bufferData, stockSecurityCodes):
 		"chSymbol"			: "0000000000000000"
 	}
 	for x in range(stockSecurityCodeNum):
-		stockSecurityCode["nIdnum"], stockSecurityCode["nType"], stockSecurityCode["chSecurityCode"], stockSecurityCode["chSymbol"] = struct.unpack("ii8s12s") 
-		pass
+		stockSecurityCode["nIdnum"], stockSecurityCode["nType"], stockSecurityCode["chSecurityCode"], stockSecurityCode["chSymbol"] = struct.unpack("ii8s16s", bufferData[(12+x*32):(12+(x+1)*32)]) 
+		stockSecurityCode["chSecurityCode"] = stockSecurityCode["chSecurityCode"].strip()
+		stockSecurityCode["chSymbol"] = stockSecurityCode["chSymbol"].strip()
+		stockSecurityCodes.append(copy.copy(stockSecurityCode))
+#解析逐笔成交
+def resolveTradeSettlement(bufferData):
 	pass
-#
 
+#解析接收的数据类型调用相应的方法
+def resolveRecvData(bufferData):
+	dataType = struct.unpack("i", bufferData[:4])[0]
+	length = struct.unpack("i", bufferData[4:8])[0]
+	#print "resolveRecvData:", dataType, length, len(bufferData)
+	if dataType == 0:
+		stockSecurityCodes = []
+		resolveStockSecurityCode(bufferData,stockSecurityCodes)
+		print stockSecurityCodes[0], stockSecurityCodes[0]["chSymbol"], len(stockSecurityCodes)
+		print stockSecurityCodes[-1], stockSecurityCodes[-1]["chSymbol"], len(stockSecurityCodes)
+	pass
 #--------------------------------
 #接收解析socket数据，缓存拼接成完整数据
 #--------------------------------
+#判断数据是否合法
+def checkRecvDataIsLegal(recvData):
+	dataType = struct.unpack("i", recvData[:4])[0]
+	legalTypes = [0,1,2,3,4,5,999]
+	if dataType in legalTypes:
+		return True
+	return False
+#判断数据是否接收完整
+def checkBufferDataIsComplete(bufferData):
+	if bufferData:
+		length = struct.unpack("i", bufferData[4:8])[0]
+		if len(bufferData) >= (length + 8):
+			return True
+	return False
+#监听socket缓存
 def recvSubscibeRespond(socketLink):
 	bufferData = ""
 	while True:
-		#time.sleep(5)
 		recvData = socketLink.recv(BUFSIZ)#.strip()
-		print len(recvData)
 		#如果缓冲没有数据，且接受过来的数据合法
 		if not bufferData:
 			if checkRecvDataIsLegal(recvData):
 				bufferData = recvData
 		else:
-			print struct.unpack("i", bufferData[:4])[0], struct.unpack("i", bufferData[4:8])[0], len(bufferData)
 			#继续缓冲数据
 			bufferData = bufferData + recvData
 		#接收数据完整，处理数据
