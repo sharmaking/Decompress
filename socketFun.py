@@ -55,7 +55,7 @@ def requestSomeTimes(socketLink, date1, date2):
 #接收解析socket完整缓存数据
 #--------------------------------
 #解析股票代码
-def resolveStockSecurityCode(bufferData, stockSecurityCodes):
+def resolveStockSecurityCode(bufferData, stockSecurityCodes):	#stockSecurityCodes为一list
 	stockSecurityCodeNum = struct.unpack("i", bufferData[8:12])[0]
 	stockSecurityCode = {
 		"nIdnum"			: 0,
@@ -69,7 +69,8 @@ def resolveStockSecurityCode(bufferData, stockSecurityCodes):
 		stockSecurityCode["chSymbol"] = stockSecurityCode["chSymbol"].strip()
 		stockSecurityCodes.append(copy.copy(stockSecurityCode))
 #解析逐笔成交
-def resolveTradeSettlement(bufferData):
+def resolveTradeSettlement(bufferData, tradeSettlements):		#tradeSettlements为一list
+	nItems = struct.unpack("i", bufferData[12:16])[0]
 	pass
 
 #解析接收的数据类型调用相应的方法
@@ -116,10 +117,3 @@ def recvSubscibeRespond(socketLink):
 		if checkBufferDataIsComplete(bufferData):
 			resolveRecvData(bufferData)
 			bufferData = ""
-
-def main():
-	requestCurrentDay("", 1 , datetime.time(11,14,12))
-	pass
-
-if __name__ == '__main__':
-	main()
