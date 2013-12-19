@@ -4,6 +4,7 @@
 import struct
 import datetime
 import copy
+import decompress
 BUFSIZ = 1024
 #socketLink 代表是socket连接类
 #--------------------------------
@@ -69,7 +70,7 @@ def resolveStockSecurityCode(bufferData, stockSecurityCodes):	#stockSecurityCode
 		stockSecurityCode["chSymbol"] = stockSecurityCode["chSymbol"].strip()
 		stockSecurityCodes.append(copy.copy(stockSecurityCode))
 #解析逐笔成交
-def resolveTradeSettlement(bufferData, tradeSettlements):		#tradeSettlements为一list
+def resolveTradeSettlement(bufferData, tradeSettlements):
 	nItems = struct.unpack("i", bufferData[12:16])[0]
 	pass
 
@@ -77,13 +78,23 @@ def resolveTradeSettlement(bufferData, tradeSettlements):		#tradeSettlements为�
 def resolveRecvData(bufferData):
 	dataType = struct.unpack("i", bufferData[:4])[0]
 	length = struct.unpack("i", bufferData[4:8])[0]
-	#print "resolveRecvData:", dataType, length, len(bufferData)
+	#接受股票代码
 	if dataType == 0:
 		stockSecurityCodes = []
-		resolveStockSecurityCode(bufferData,stockSecurityCodes)
-		print stockSecurityCodes[0], stockSecurityCodes[0]["chSymbol"], len(stockSecurityCodes)
-		print stockSecurityCodes[-1], stockSecurityCodes[-1]["chSymbol"], len(stockSecurityCodes)
-	pass
+		resolveStockSecurityCode(bufferData, stockSecurityCodes)
+	#接受逐笔成交
+	elif dataType == 1:
+		tradeSettlements = []
+		resolveTradeSettlement(bufferData, stockSecurityCodes)
+		pass
+	elif dataType == 2:
+		pass
+	elif dataType == 3:
+		pass
+	elif dataType == 4:
+		pass
+	elif dataType == 5:
+		pass
 #--------------------------------
 #接收解析socket数据，缓存拼接成完整数据
 #--------------------------------

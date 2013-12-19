@@ -7,8 +7,8 @@ import socket
 import socketFun
 from socket import * 
 
-HOST = '192.168.1.108' 
-PORT = 18307 
+HOST = '192.168.1.186' 
+PORT = 18201 
 BUFSIZ = 1024
 ADDR = (HOST, PORT)
 
