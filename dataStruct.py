@@ -3,34 +3,48 @@
 # dataStruct.py
 #逐笔成交
 import numpy as np
+import copy
+
 AD_Transaction = {
-	"idx" : 0,
-	"chSecurityCode" : "00000000",
+	"idx" : 0,							#在包中的编号
+	"chSecurityCode" : "00000000",		#证券代码
 	"b_isHistoryData" : True,
 	"nCurDate" : 0,
 	"nCurTime" : 0,
-	"nDate" : 0,
-	"nTime" : 0,
-	"nIndex" : 0,
-	"nPrice" : 0,
-	"nVolume" : 0,
-	"nTurnover" : 0
+	"nDate" : 0,						#成交日期
+	"nTime" : 0,						#成交时间
+	"nIndex" : 0,						#成交编号
+	"nPrice" : 0,						#成交价格
+	"nVolume" : 0,						#成交数量
+	"nTurnover" : 0 					#成交金额
 }
+def getTransactions(nItems):
+	pTransactions = []
+	for i in range(nItems):
+		pTransactions.append(copy.copy(AD_Transaction))
+	return pTransactions
 
 #成交队列
 AD_OrderQueue = {
 	"b_isHistoryData" : True,
 	"nCurDate" : 0,
 	"nCurTime" : 0,
-	"chSecurityCode" : "00000000",
+	"chSecurityCode" : "00000000",		#证券代码
 	"nDate" : 0,
 	"nTime" : 0,
-	"nSide" : 0,
-	"nPrice" : 0,
-	"nOrders" : 0,
-	"nABItems" : 0,
-	"nABVolume" : [0]*200
+	"nSide" : 0,						#买卖方向（B：bid，S：Ask）
+	"nPrice" : 0,						#成交价格
+	"nOrders" : 0,						#订单数量
+	"nABItems" : 0,						#明细个数
+	"nABVolume" : []					#订单明细
 }
+def getOrderQueue(nItems):
+	pQueues = []
+	pIdnums = []
+	for i in range(nItems):
+		pQueues.append(copy.copy(AD_OrderQueue))
+		pIdnums.append(0)
+	return pQueues, pIdnums
 #行情数据
 MarketDataForTrade = {
 	"nindex" : 0,					#行情编号
@@ -65,3 +79,5 @@ MarketDataForTrade = {
 	"nLowLimited" : 0,
 	"chPrefix" : 0
 }
+def getMarketDataForTrade():
+	pass

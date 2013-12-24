@@ -1,115 +1,72 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 # decompress.py
-import numpy as np
-import struct
+import dataStruct
+import copy
+import ctypes
+import datetime
 
-def unpackBinaryStr(s,length):
-	fmt = "B"
-	if length > 1:
-		fmt = str(length) + fmt
-	_p = struct.unpack(fmt,s)
-	#倒序
-	p = []
-	for x in reversed(_p):
-		p.append(x)
-	p = tuple(p)
-	return p
-def decompressData(iData, p):
-	size = 1
-	vol = 1
-	iData = np.int64(0)
-
-	if ((p[0]&0x03) == 3): vol = 1000
-	elif ((p[0]&0x03) == 2): vol = 100
-	elif ((p[0]&0x03) == 1): vol = 10
-	else: vol = 1
-
-	if ((p[0]&0x70) == 0 and (p[0]&0x0c) == 0): iData = 0
-	elif ((p[0]&0x0c) == 0x04): iData = 1
-	elif ((p[0]&0x0c) == 0x08): iData = 2
-	elif ((p[0]&0x0c) == 0x0c): iData = 3
-	else:
-		expression = p[0]&0x70
-		if expression == 0x10:
-			iData = p[1]&0xff
-			size = 2
-		elif expression == 0x20:
-			iData = (p[1]&0xff) | ((p[2]<<8)&0xff00)
-			size = 3
-		elif expression == 0x30:
-			iData = (p[1]&0xff) | ((p[2]<<8)&0xff00) | ((p[3]<<16)&0xff0000)
-			size = 4
-		elif expression == 0x40:
-			iData = (p[1]&0xff) | ((p[2]<<8)&0xff00) | ((p[3]<<16)&0xff0000) | ((p[4]<<24)&0xff000000)
-			size = 5
-		elif expression == 0x50:
-			iData = (p[1]&0xff) | ((p[2]<<8)&0xff00) | ((p[3]<<16)&0xff0000) | ((p[4]<<24)&0xff000000) | ((np.int64(p[5]&0xff)<<32)&0xff00000000)
-			size = 6
-		elif expression == 0x60:
-			iData = (p[1]&0xff) | ((p[2]<<8)&0xff00) | ((p[3]<<16)&0xff0000) | ((p[4]<<24)&0xff000000) | ((np.int64(p[5]&0xff)<<32)&0xff00000000) | ((np.int64(p[6]&0xff)<<40)&0xff0000000000)
-			size = 7
-		elif expression == 0x70:
-			iData = (p[1]&0xff) | ((p[2]<<8)&0xff00) | ((p[3]<<16)&0xff0000) | ((p[4]<<24)&0xff000000) | ((np.int64(p[5]&0xff)<<32)&0xff00000000) | ((np.int64(p[6]&0xff)<<40)&0xff0000000000) | ((np.int64(p[7]&0xff)<<48)&0xff000000000000)
-			size = 8
-	iData = iData * vol
-	if p[0]&0x80:
-		iData = -1 * iData
-	return size
+api = ctypes.windll.LoadLibrary("./decompress.dll")
 #解压逐笔成交数据
-def DecompressTransactionData(pTransactions, p, nItems):	#pTransactions为一list
+def DecompressTransactionData(p, nItems):
+	pTransactions = dataStruct.getTransactions(nItems)
 	nSize = 0
-	iData = np.int64(0)
+	iData = ctypes.c_longlong(0)
 	nPreTime = 0
 	nPreIndex = 0
 	nPrePrice = 0
 	for i in range(nItems):
 		#成交时间
-		nSize = nSize + decompressData(iData, p[nSize:])
-		pTransactions[i]["nTime"] = nPreTime + iData 
+		nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+		pTransactions[i]["nTime"] = nPreTime + iData.value 
 		nPreTime = pTransactions[i]["nTime"]
+		pTransactions[i]["nTime"] = datetime.datetime.strptime(str(nPreTime), "%H%M%S%f").time()
 		#成交序号
-		nSize = nSize + decompressData(iData, p[nSize:])			
-		pTransactions[i]["nIndex"] = iData + nPreIndex
-		nPreIndex = pTransactions[i]["nIndex"]
+		nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+		nPreIndex = nPreIndex + int(iData.value)
+		pTransactions[i]["nIndex"] = nPreIndex
 		#成交价格
-		nSize = nSize + decompressData(iData, p[nSize:])				
-		pTransactions[i]["nPrice"] = nPrePrice + iData
-		nPrePrice = pTransactions[i]["nPrice"]
+		nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+		nPrePrice = nPrePrice + int(iData.value)
+		pTransactions[i]["nPrice"] = round(float(nPrePrice)/10000,2)
 		#成交数量
-		nSize = nSize + decompressData(iData, p[nSize:])					
-		pTransactions[i]["nVolume"] = iData					
+		nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+		pTransactions[i]["nVolume"] = int(round(iData.value,-2)/100)
 
-		pTransactions[i]["nTurnover"] = pTransactions[i]["nPrice"]/10000.0 * pTransactions[i]["nVolume"]
-	return nSize
+		pTransactions[i]["nTurnover"] = pTransactions[i]["nPrice"] * pTransactions[i]["nVolume"] * 100
+	return pTransactions
 #解压成交队列
-def DecompressOrderQueueData(pQueues, p, nItems, pIdnum):
+def DecompressOrderQueueData(p, nItems):
+	pQueues, pIdnums = dataStruct.getOrderQueue(nItems)
 	nSize = 0
-	iData = np.int64(0)
+	iData = ctypes.c_longlong(0)
 	for i in range(nItems):
 		#本日编号
-		nSize = nSize + decompressData(iData, p[nSize:])
-		pIdnum[i] = iData
+		nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+		pIdnums[i] = iData.value
 		#订单编号
-		nSize += decompressData(iData, p[nSize:])
-		pQueues[i]["nTime"] = iData
+		nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+		pQueues[i]["nTime"] = datetime.datetime.strptime(str(iData.value), "%H%M%S%f").time()
 		#买卖方向(A:Ask, B:Bid)
-		nSize = nSize + 1
 		pQueues[i]["nSide"] = p[nSize]
+		nSize = nSize + 1
 		#订单价格
-		nSize = nSize + decompressData(iData, p[nSize:])
-		pQueues[i]["nPrice"] = iData
+		nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+		pQueues[i]["nPrice"] = round(float(iData.value)/10000,2)
 		#订单数量
-		nSize = nSize + decompressData(iData, p[nSize:])
-		pQueues[i]["nOrders"] = iData
+		nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+		pQueues[i]["nOrders"] = int(iData.value)
 		#队列个数
-		nSize = nSize + decompressData(iData, p[nSize:])
-		pQueues[i]["nABItems"] = iData
+		nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+		pQueues[i]["nABItems"] = int(iData.value)
 		#订单数量
+		nABVolume = []
 		for k in range(pQueues[i]["nABItems"]):
-			nSize = nSize + decompressData(iData, p[nSize:])	
-			pQueues[i]["nABVolume"][k] = iData
-	return nSize
+			nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))	
+			nABVolume.append(int(round(iData.value, -2)/100))
+		pQueues[i]["nABVolume"] = nABVolume
+	return pQueues, pIdnums
+"""
 #解压行情数据
 def DecompressMarketData(pMarketData, p, pIdnum):
 	nSize = 0
@@ -316,3 +273,4 @@ def DecompressIndexData(pMarketData, p):
 	nSize = nSize + decompressData(iData, p[nSize:])
 	pMarketData["nPreCloseIndex"] = iData + pMarketData["nOpenIndex"]
 	return nSize
+"""

@@ -13,11 +13,11 @@ BUFSIZ = 1024
 ADDR = (HOST, PORT)
 
 def main():
-	subStock = ["600000", "000001", "300121"]
+	subStock = ["000004"]
 
 	tcpCliSock = socket(AF_INET, SOCK_STREAM) 
 	tcpCliSock.connect(ADDR)
-	time.sleep(5)
+	time.sleep(2)
 	if tcpCliSock:
 		#订阅股票
 		socketFun.subscibeStock(tcpCliSock, subStock)

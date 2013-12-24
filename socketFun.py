@@ -5,8 +5,14 @@ import struct
 import datetime
 import copy
 import decompress
-BUFSIZ = 1024
+import time
 #socketLink 代表是socket连接类
+#--------------------------------
+#定义共用成员变量
+#--------------------------------
+BUFSIZ = 1024
+g_currentDate = 0
+g_stocks = {}		#股票id与股票代码对应查询字典
 #--------------------------------
 #发送订阅请求
 #--------------------------------
@@ -55,8 +61,14 @@ def requestSomeTimes(socketLink, date1, date2):
 #--------------------------------
 #接收解析socket完整缓存数据
 #--------------------------------
+#解析发送股票时间
+def resolveCurrentDate(bufferData):
+	global g_currentDate
+	g_currentDate = struct.unpack("i", bufferData[8:12])[0]
+	g_currentDate = datetime.datetime.strptime(str(g_currentDate), "%Y%m%d") .date()
 #解析股票代码
-def resolveStockSecurityCode(bufferData, stockSecurityCodes):	#stockSecurityCodes为一list
+def resolveStockSecurityCode(bufferData):
+	global g_stocks
 	stockSecurityCodeNum = struct.unpack("i", bufferData[8:12])[0]
 	stockSecurityCode = {
 		"nIdnum"			: 0,
@@ -66,29 +78,55 @@ def resolveStockSecurityCode(bufferData, stockSecurityCodes):	#stockSecurityCode
 	}
 	for x in range(stockSecurityCodeNum):
 		stockSecurityCode["nIdnum"], stockSecurityCode["nType"], stockSecurityCode["chSecurityCode"], stockSecurityCode["chSymbol"] = struct.unpack("ii8s16s", bufferData[(12+x*32):(12+(x+1)*32)]) 
-		stockSecurityCode["chSecurityCode"] = stockSecurityCode["chSecurityCode"].strip()
-		stockSecurityCode["chSymbol"] = stockSecurityCode["chSymbol"].strip()
-		stockSecurityCodes.append(copy.copy(stockSecurityCode))
+		stockSecurityCode["chSecurityCode"] = stockSecurityCode["chSecurityCode"].replace("\x00","")
+		stockSecurityCode["chSymbol"] = stockSecurityCode["chSymbol"].replace("\x00","")
+		g_stocks[str(stockSecurityCode["nIdnum"])] = copy.copy(stockSecurityCode)
 #解析逐笔成交
-def resolveTradeSettlement(bufferData, tradeSettlements):
-	nItems = struct.unpack("i", bufferData[12:16])[0]
-	pass
+def resolveTradeSettlement(bufferData):
+	p = bufferData
+	dataType = struct.unpack("i", p[:4])[0]
+	length = struct.unpack("i", p[4:8])[0]
+	p = p[8:]
+
+	nIdnum = struct.unpack("i", p[:4])[0]
+	nItems = struct.unpack("i", p[4:8])[0]
+	p = p[8:]
+
+	pTransactions = decompress.DecompressTransactionData(p, nItems)
+	for pTransaction in pTransactions:
+		pTransaction["chSecurityCode"] = g_stocks[str(nIdnum)]["chSecurityCode"]
+		pTransaction["nDate"] = g_currentDate
+#解析成交队列
+def resolveOrderQueue(bufferData):
+	p = bufferData
+	dataType = struct.unpack("i", p[:4])[0]
+	length = struct.unpack("i", p[4:8])[0]
+	p = p[8:]
+
+	nItems = struct.unpack("i", p[0:4])[0]
+	p = p[4:]
+
+	pQueues, pIdnums = decompress.DecompressOrderQueueData(p, nItems)
+	for i in range(nItems):
+		pQueues[i]["chSecurityCode"] = g_stocks[str(pIdnums[i])]["chSecurityCode"]
+		pQueues[i]["nDate"] = g_currentDate
 
 #解析接收的数据类型调用相应的方法
 def resolveRecvData(bufferData):
 	dataType = struct.unpack("i", bufferData[:4])[0]
 	length = struct.unpack("i", bufferData[4:8])[0]
-	#接受股票代码
-	if dataType == 0:
-		stockSecurityCodes = []
-		resolveStockSecurityCode(bufferData, stockSecurityCodes)
-	#接受逐笔成交
+	#解析当前日期
+	if dataType == 999:
+		resolveCurrentDate(bufferData)
+	#解析股票代码
+	elif dataType == 0:
+		resolveStockSecurityCode(bufferData)
+	#解析逐笔成交
 	elif dataType == 1:
-		tradeSettlements = []
-		resolveTradeSettlement(bufferData, stockSecurityCodes)
-		pass
+		resolveTradeSettlement(bufferData)
+	#解析成交队列
 	elif dataType == 2:
-		pass
+		resolveOrderQueue(bufferData)
 	elif dataType == 3:
 		pass
 	elif dataType == 4:
@@ -98,33 +136,37 @@ def resolveRecvData(bufferData):
 #--------------------------------
 #接收解析socket数据，缓存拼接成完整数据
 #--------------------------------
-#判断数据是否合法
-def checkRecvDataIsLegal(recvData):
-	dataType = struct.unpack("i", recvData[:4])[0]
-	legalTypes = [0,1,2,3,4,5,999]
-	if dataType in legalTypes:
-		return True
-	return False
 #判断数据是否接收完整
 def checkBufferDataIsComplete(bufferData):
-	if bufferData:
+	if len(bufferData)>8:
 		length = struct.unpack("i", bufferData[4:8])[0]
 		if len(bufferData) >= (length + 8):
 			return True
 	return False
+#处理接收数据
+def handleBufferData(bufferData):
+	tempBufferData = bufferData
+	#如果缓存区为空直接返回
+	while checkBufferDataIsComplete(tempBufferData):
+		dataType = struct.unpack("i", tempBufferData[:4])[0]
+		length = struct.unpack("i", tempBufferData[4:8])[0]
+		completBufferDate = tempBufferData[:length+8]
+		resolveRecvData(completBufferDate)
+		tempBufferData = tempBufferData[length+8:]
+		if len(tempBufferData) < 8:
+			break
+		pass
+	return tempBufferData
 #监听socket缓存
 def recvSubscibeRespond(socketLink):
 	bufferData = ""
 	while True:
-		recvData = socketLink.recv(BUFSIZ)#.strip()
-		#如果缓冲没有数据，且接受过来的数据合法
+		recvData = socketLink.recv(BUFSIZ)
+		#如果缓冲没有数据
 		if not bufferData:
-			if checkRecvDataIsLegal(recvData):
-				bufferData = recvData
-		else:
-			#继续缓冲数据
+			bufferData = recvData
+		else: #继续缓冲数据
 			bufferData = bufferData + recvData
-		#接收数据完整，处理数据
+		#接收数据完整，处理缓冲数据
 		if checkBufferDataIsComplete(bufferData):
-			resolveRecvData(bufferData)
-			bufferData = ""
+			bufferData = handleBufferData(bufferData)
