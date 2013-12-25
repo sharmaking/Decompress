@@ -62,215 +62,218 @@ def DecompressOrderQueueData(p, nItems):
 		#订单数量
 		nABVolume = []
 		for k in range(pQueues[i]["nABItems"]):
-			nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))	
+			nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
 			nABVolume.append(int(round(iData.value, -2)/100))
 		pQueues[i]["nABVolume"] = nABVolume
 	return pQueues, pIdnums
-"""
 #解压行情数据
-def DecompressMarketData(pMarketData, p, pIdnum):
+def DecompressMarketData(p):
+	pMarketData, pIdnum = dataStruct.getMarketData()
 	nSize = 0
-	iData = np.int64(0)
+	iData = ctypes.c_longlong(0)
 
-	nSize =  decompressData(iData, p[nSize:])
-	pIdnum = iData
+	nSize = api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pIdnum = iData.value
 	#状态
-	nSize = nSize + decompressData(iData, p[nSize:])
-	pMarketData["nStatus"]	= iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nStatus"]	= iData.value
 	#时间
-	nSize = nSize + decompressData(iData, p[nSize:])
-	pMarketData["nTime"]	= iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nTime"]	= datetime.datetime.strptime(str(iData.value), "%H%M%S%f").time()
 	#昨收
-	nSize = nSize + decompressData(iData, p[nSize:])
-	pMarketData["nPreClose"] = iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nPreClose"] = round(float(iData.value)/10000,2)
 	#开盘价
-	nSize = nSize + decompressData(iData, p[nSize:])
-	pMarketData["nOpen"] = iData + pMarketData["nPreClose"]
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nOpen"] = round(float(iData.value)/10000,2) + pMarketData["nPreClose"]
 	#最高价
-	nSize = nSize + decompressData(iData, p[nSize:])
-	pMarketData["nHigh"] = iData + pMarketData["nPreClose"]
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nHigh"] = round(float(iData.value)/10000,2) + pMarketData["nPreClose"]
 	#最低价
-	nSize = nSize + decompressData(iData, p[nSize:])
-	pMarketData["nLow"]  = iData + pMarketData["nPreClose"]
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nLow"]  = round(float(iData.value)/10000,2) + pMarketData["nPreClose"]
 	#最新价
-	nSize = nSize + decompressData(iData, p[nSize:])
-	pMarketData["nMatch"]= iData + pMarketData["nPreClose"]
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nMatch"]= round(float(iData.value)/10000,2) + pMarketData["nPreClose"]
 	#竞买价
 	nPrice = pMarketData["nMatch"]
 	if not nPrice:
 		nPrice = pMarketData["nPreClose"]
 	for i in range(10):
-		nSize = nSize + decompressData(iData, p[nSize:])
-		pMarketData["nBidPrice"][i] = nPrice - iData
+		nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+		pMarketData["nBidPrice"][i] = nPrice - round(float(iData.value)/10000,2)
 		nPrice = pMarketData["nBidPrice"][i]
 	#竞卖价
 	nPrice = pMarketData["nMatch"]
 	if not nPrice:
 		nPrice = pMarketData["nPreClose"]
 	for i in range(10):
-		nSize = nSize + decompressData(iData, p[nSize:])
-		pMarketData["nAskPrice"][i] = nPrice - iData
+		nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+		pMarketData["nAskPrice"][i] = nPrice - round(float(iData.value)/10000,2)
 		nPrice = pMarketData["nAskPrice"][i]
 	#竞买量
 	for i in range(10):
-		nSize = nSize + decompressData(iData, p[nSize:])
-		pMarketData["nBidVol"][i] = iData
+		nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+		pMarketData["nBidVol"][i] = int(round(iData.value,-2)/100)
 	#竞卖量
 	for i in range(10):
-		nSize = nSize + decompressData(iData, p[nSize:])
-		pMarketData["nAskVol"][i] = iData
+		nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+		pMarketData["nAskVol"][i] = int(round(iData.value,-2)/100)
 	#成交笔数
-	nSize = nSize + decompressData(iData, p[nSize:])
-	pMarketData["nNumTrades"] = iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nNumTrades"] = int(iData.value)
 	#成交总量
-	nSize = nSize + decompressData(iData, p[nSize:])
-	pMarketData["iVolume"]	= iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["iVolume"]	= int(round(iData.value,-2)/100)
 	#成交总金额
-	nSize = nSize + decompressData(iData, p[nSize:])
-	pMarketData["iTurnover"]	= iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["iTurnover"]	= iData.value
 	#委托买入总量
-	nSize = nSize + decompressData(iData, p[nSize:])
-	pMarketData["nTotalBidVol"] = iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nTotalBidVol"] = int(round(iData.value,-2)/100)
 	#加权平均委买价格
-	nSize = nSize + decompressData(iData, p[nSize:])
-	pMarketData["nWeightedAvgBidPrice"] = iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nWeightedAvgBidPrice"] = round(float(iData.value)/10000,2)
 	#委托卖出总量
-	nSize = nSize + decompressData(iData, p[nSize:])
-	pMarketData["nTotalAskVol"] = iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nTotalAskVol"] = int(round(iData.value,-2)/100)
 	#加权平均委卖价格
-	nSize = nSize + decompressData(iData, p[nSize:])
-	pMarketData["nWeightedAvgAskPrice"] = iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nWeightedAvgAskPrice"] = round(float(iData.value)/10000,2)
 	#IOPV净值估值
-	nSize = nSize + decompressData(iData, p[nSize:])
-	pMarketData["nIOPV"] = iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nIOPV"] = iData.value
 	#到期收益率
-	nSize = nSize + decompressData(iData, p[nSize:])
-	pMarketData["nYieldToMaturity"] = iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nYieldToMaturity"] = iData.value
 	#涨停价
-	nSize = nSize + decompressData(iData, p[nSize:])
-	pMarketData["nHighLimited"] = pMarketData["nPreClose"] + iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nHighLimited"] = pMarketData["nPreClose"] + round(float(iData.value)/10000,2)
 	#跌停价
-	nSize = nSize + decompressData(iData, p[nSize:])
-	pMarketData["nLowLimited"] = pMarketData["nPreClose"] + iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nLowLimited"] = pMarketData["nPreClose"] + round(float(iData.value)/10000,2)
 	pMarketData["chPrefix"] = p[nSize:nSize+4]
-	nSize += 4;
-	return nSize
+	nSize = nSize + 4;
+	return nSize, pMarketData, pIdnum
 #解压期货行情数据
-def DecompressMarketData_Futures(pMarketData, p):
+def DecompressMarketData_Futures(p):
+	pMarketData = dataStruct.getFutureMarketData()
 	nSize = 0
-	iData = np.int64(0)
+	iData = ctypes.c_longlong(0)
 
-	nSize =  decompressData(iData, p[nSize:])
-	pMarketData["nIndex"]  = iData
+	nSize = api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nIndex"]	= iData.value
 	#状态
-	nSize += decompressData(iData, p[nSize:]);	
-	pMarketData["nStatus"] = iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nStatus"]	= iData.value
 	#时间
-	nSize += decompressData(iData, p[nSize:])
-	pMarketData["nTime"]	 = iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nTime"]	= datetime.datetime.strptime(str(iData.value), "%H%M%S%f").time()
 	#昨持仓
-	nSize += decompressData(iData, p[nSize:])
-	pMarketData["iPreOpenInterest"] = iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["iPreOpenInterest"] = int(iData.value)
 	#前收盘价
-	nSize += decompressData(iData, p[nSize:])
-	pMarketData["nPreClose"] = iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nPreClose"] = round(float(iData.value)/10000,2)
 	#昨日结算
-	nSize += decompressData(iData, p[nSize:])
-	pMarketData["nPreSettlePrice"] = iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nPreSettlePrice"] = round(float(iData.value)/10000,2)
 	#开盘价
-	nSize += decompressData(iData, p[nSize:])
-	pMarketData["nOpen"] = iData + pMarketData["nPreClose"]
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nOpen"] = round(float(iData.value)/10000,2) + pMarketData["nPreClose"]
 	#最高价
-	nSize += decompressData(iData, p[nSize:])
-	pMarketData["nHigh"] = iData + pMarketData["nPreClose"]
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nHigh"] = round(float(iData.value)/10000,2) + pMarketData["nPreClose"]
 	#最低价
-	nSize += decompressData(iData, p[nSize:])
-	pMarketData["nLow"]  = iData + pMarketData["nPreClose"]
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nLow"]  = round(float(iData.value)/10000,2) + pMarketData["nPreClose"]
 	#最新价
-	nSize += decompressData(iData, p[nSize:])
-	pMarketData["nMatch"]= iData + pMarketData["nPreClose"]
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nMatch"]= round(float(iData.value)/10000,2) + pMarketData["nPreClose"]
 	#成交总量
-	nSize += decompressData(iData, p[nSize:])
-	pMarketData["iVolume"]	= iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["iVolume"]	= int(iData.value)
 	#成交总金额
-	nSize += decompressData(iData, p[nSize:])
-	pMarketData["iTurnover"]	= iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["iTurnover"] = round(float(iData.value)/10000,2)
 	#持仓
-	nSize += decompressData(iData, p[nSize:])
-	pMarketData["iOpenInterest"] = iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["iOpenInterest"] = int(iData.value)
 	#收盘价
-	nSize += decompressData(iData, p[nSize:])
-	pMarketData["nClose"] = iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nClose"] = round(float(iData.value)/10000,2)
 	#结算价
-	nSize += decompressData(iData, p[nSize:])
-	pMarketData["nSettlePrice"] = iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nSettlePrice"] = round(float(iData.value)/10000,2)
 	#涨停价
-	nSize += decompressData(iData, p[nSize:])
-	pMarketData["nHighLimited"] = iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nHighLimited"] = round(float(iData.value)/10000,2)
 	#跌停价
-	nSize += decompressData(iData, p[nSize:])
-	pMarketData["nLowLimited"] = iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nLowLimited"] = round(float(iData.value)/10000,2)
 	#昨虚实度
-	nSize += decompressData(iData, p[nSize:])
-	pMarketData["nPreDelta"] = iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nPreDelta"] = iData.value
 	#今虚实度
-	nSize += decompressData(iData, p[nSize:])
-	pMarketData["nCurrDelta"] = iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nCurrDelta"] = iData.value
 	#竞买价
 	nPrice = pMarketData["nMatch"]
 	if not nPrice:
 		nPrice = pMarketData["nPreClose"]
 	for i in range(5):
-		nSize += decompressData(iData, p[nSize:])
-		pMarketData["nBidPrice"][i] = nPrice - iData
+		nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+		pMarketData["nBidPrice"][i] = nPrice - round(float(iData.value)/10000,2)
+		pMarketData["nBidPrice"][i] = round(pMarketData["nBidPrice"][i], 2)
 		nPrice = pMarketData["nBidPrice"][i]
 	#竞卖价
 	nPrice = pMarketData["nMatch"]
 	if not nPrice:
 		nPrice = pMarketData["nPreClose"]
 	for i in range(5):
-		nSize += decompressData(iData, p[nSize:])
-		pMarketData["nAskPrice"][i] = nPrice - iData
+		nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+		pMarketData["nAskPrice"][i] = nPrice - round(float(iData.value)/10000,2)
+		pMarketData["nAskPrice"][i] = round(pMarketData["nBidPrice"][i], 2)
 		nPrice = pMarketData["nAskPrice"][i]
 	#竞买量
 	for i in range(5):
-		nSize += decompressData(iData, p[nSize:])
-		pMarketData["nBidVol"][i] = iData
+		nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+		pMarketData["nBidVol"][i] = int(iData.value)
 	#竞卖量
 	for i in range(5):
-		nSize += decompressData(iData, p[nSize:])
-		pMarketData["nAskVol"][i] = iData
-	return nSize
+		nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+		pMarketData["nAskVol"][i] = int(iData.value)
+	return nSize, pMarketData
 #解压指数数据
-def DecompressIndexData(pMarketData, p):
+def DecompressIndexData(p):
+	pMarketData = dataStruct.getIndexMarketData()
 	nSize = 0
-	iData = np.int64(0)
+	iData = ctypes.c_longlong(0)
 	#本日编号
-	nSize =  decompressData(iData, p[nSize:])
-	pMarketData["nIndex"] = iData
+	nSize = api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nIndex"] = iData.value
 	#时间
-	nSize = nSize + decompressData(iData, p[nSize:])
-	pMarketData["nTime"]  = iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nTime"]  = iData.value
 	#今日开盘指数
-	nSize = nSize + decompressData(iData, p[nSize:])
-	pMarketData["nOpenIndex"] = iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nOpenIndex"] = iData.value
 	#今日最高指数
-	nSize = nSize + decompressData(iData, p[nSize:])
-	pMarketData["nHighIndex"] = iData + pMarketData["nOpenIndex"]
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nHighIndex"] = iData.value + pMarketData["nOpenIndex"]
 	#今日最低指数
-	nSize = nSize + decompressData(iData, p[nSize:])
-	pMarketData["nLowIndex"]  = iData + pMarketData["nOpenIndex"]
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nLowIndex"]  = iData.value + pMarketData["nOpenIndex"]
 	#今日最新指数
-	nSize = nSize + decompressData(iData, p[nSize:])
-	pMarketData["nLastIndex"] = iData + pMarketData["nOpenIndex"]
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nLastIndex"] = iData.value + pMarketData["nOpenIndex"]
 	#参与计算相应指数的交易数量
-	nSize = nSize + decompressData(iData, p[nSize:])
-	pMarketData["iTotalVolume"]	= iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["iTotalVolume"]	= iData.value
 	#参与计算相应指数的成交金额
-	nSize = nSize + decompressData(iData, p[nSize:])
-	pMarketData["iTurnover"]	= iData
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["iTurnover"]	= iData.value
 	#前收指数
-	nSize = nSize + decompressData(iData, p[nSize:])
-	pMarketData["nPreCloseIndex"] = iData + pMarketData["nOpenIndex"]
-	return nSize
-"""
+	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
+	pMarketData["nPreCloseIndex"] = iData.value + pMarketData["nOpenIndex"]
+	return nSize, pMarketData

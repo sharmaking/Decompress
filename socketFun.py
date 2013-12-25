@@ -18,13 +18,13 @@ g_stocks = {}		#股票id与股票代码对应查询字典
 #--------------------------------
 #向服务端发送订阅股票 step-1
 def subscibeStock(socketLink, stocks):
-	fmt = "ii%ds" %(6*len(stocks))
+	fmt = "iii%ds" %(6*len(stocks))
 	sn = 0
-	length = 6*len(stocks)
+	length = 6*len(stocks) + 4
 	stocksStr = ""
 	for stock in stocks:
 		stocksStr = stocksStr + stock
-	bytes = struct.pack(fmt, sn, length, stocksStr)
+	bytes = struct.pack(fmt, sn, length, len(stocks), stocksStr)
 	#发送订阅代码
 	socketLink.send(bytes)
 #向服务端发送订阅请求时间段
@@ -83,11 +83,7 @@ def resolveStockSecurityCode(bufferData):
 		g_stocks[str(stockSecurityCode["nIdnum"])] = copy.copy(stockSecurityCode)
 #解析逐笔成交
 def resolveTradeSettlement(bufferData):
-	p = bufferData
-	dataType = struct.unpack("i", p[:4])[0]
-	length = struct.unpack("i", p[4:8])[0]
-	p = p[8:]
-
+	p = bufferData[8:]
 	nIdnum = struct.unpack("i", p[:4])[0]
 	nItems = struct.unpack("i", p[4:8])[0]
 	p = p[8:]
@@ -98,11 +94,7 @@ def resolveTradeSettlement(bufferData):
 		pTransaction["nDate"] = g_currentDate
 #解析成交队列
 def resolveOrderQueue(bufferData):
-	p = bufferData
-	dataType = struct.unpack("i", p[:4])[0]
-	length = struct.unpack("i", p[4:8])[0]
-	p = p[8:]
-
+	p = bufferData[8:]
 	nItems = struct.unpack("i", p[0:4])[0]
 	p = p[4:]
 
@@ -110,7 +102,44 @@ def resolveOrderQueue(bufferData):
 	for i in range(nItems):
 		pQueues[i]["chSecurityCode"] = g_stocks[str(pIdnums[i])]["chSecurityCode"]
 		pQueues[i]["nDate"] = g_currentDate
+#解析股票行情数据
+def resolveMarketData(bufferData):
+	p = bufferData[8:]
+	nItems = struct.unpack("i", p[0:4])[0]
+	p = p[4:]
 
+	nSize = 0
+	for i in range(nItems):
+		nLength, pMarketData, pIdnum = decompress.DecompressMarketData(p[nSize:])
+		nSize = nSize + nLength
+		pMarketData["chSecurityCode"] = g_stocks[str(pIdnum)]["chSecurityCode"]
+		pMarketData["nDate"] = g_currentDate
+#解析期货行情数据
+def resolveFutureMarketData(bufferData):
+	p = bufferData[8:]
+	nItems = struct.unpack("i", p[0:4])[0]
+	p = p[4:]
+
+	nSize = 0
+	for i in range(nItems):
+		nLength, pMarketData = decompress.DecompressMarketData_Futures(p[nSize:])
+		nSize = nSize + nLength
+		pMarketData["chSecurityCode"] = g_stocks[str(pMarketData["nIndex"])]["chSecurityCode"]
+		pMarketData["nDate"] = g_currentDate
+#解析指数数据
+def resolveIndexMarketData(bufferData):
+	p = bufferData[8:]
+	nItems = struct.unpack("i", p[0:4])[0]
+	p = p[4:]
+
+	nSize = 0
+	for i in range(nItems):
+		nLength, pMarketData = decompress.DecompressIndexData(p[nSize:])
+		nSize = nSize + nLength
+		pMarketData["chSecurityCode"] = g_stocks[str(pMarketData["nIndex"])]["chSecurityCode"]
+		pMarketData["nDate"] = g_currentDate
+
+		print pMarketData
 #解析接收的数据类型调用相应的方法
 def resolveRecvData(bufferData):
 	dataType = struct.unpack("i", bufferData[:4])[0]
@@ -127,12 +156,16 @@ def resolveRecvData(bufferData):
 	#解析成交队列
 	elif dataType == 2:
 		resolveOrderQueue(bufferData)
+	#解析股票行情数据
 	elif dataType == 3:
-		pass
+		resolveMarketData(bufferData)
+	#解析期货行情数据
 	elif dataType == 4:
-		pass
+		resolveFutureMarketData(bufferData)
+	#解析指数数据
 	elif dataType == 5:
-		pass
+		print "dataType:", dataType
+		resolveIndexMarketData(bufferData)
 #--------------------------------
 #接收解析socket数据，缓存拼接成完整数据
 #--------------------------------

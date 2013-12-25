@@ -4,7 +4,10 @@
 #逐笔成交
 import numpy as np
 import copy
-
+#-----------------------------
+#标准解压结构体
+#-----------------------------
+#单笔逐笔成交
 AD_Transaction = {
 	"idx" : 0,							#在包中的编号
 	"chSecurityCode" : "00000000",		#证券代码
@@ -18,12 +21,6 @@ AD_Transaction = {
 	"nVolume" : 0,						#成交数量
 	"nTurnover" : 0 					#成交金额
 }
-def getTransactions(nItems):
-	pTransactions = []
-	for i in range(nItems):
-		pTransactions.append(copy.copy(AD_Transaction))
-	return pTransactions
-
 #成交队列
 AD_OrderQueue = {
 	"b_isHistoryData" : True,
@@ -38,14 +35,7 @@ AD_OrderQueue = {
 	"nABItems" : 0,						#明细个数
 	"nABVolume" : []					#订单明细
 }
-def getOrderQueue(nItems):
-	pQueues = []
-	pIdnums = []
-	for i in range(nItems):
-		pQueues.append(copy.copy(AD_OrderQueue))
-		pIdnums.append(0)
-	return pQueues, pIdnums
-#行情数据
+#股票行情数据
 MarketDataForTrade = {
 	"nindex" : 0,					#行情编号
 	"chSecurityCode" : "00000000",	#证券代码
@@ -79,5 +69,72 @@ MarketDataForTrade = {
 	"nLowLimited" : 0,
 	"chPrefix" : 0
 }
-def getMarketDataForTrade():
-	pass
+#期货行情数据
+MarketDataForTrade_Future = {
+	"chSecurityCode" : "00000000",	#期货代码
+	"nIndex" : 0,					#期货编号
+	"nDate" : 0,					#日期 yyyymmdd
+	"nTime" : 0,					#时间(HHMMSSmmmm)
+	"nStatus" : 0,					#状态
+	"iPreOpenInterest" : 0,			#昨持仓
+	"nPreClose" : 0,				#昨收盘价
+	"nPreSettlePrice" : 0,			#昨结算
+	"nOpen" : 0,					#开盘价	
+	"nHigh" : 0,					#最高价
+	"nLow" : 0,						#最低价
+	"nMatch" : 0,					#最新价
+	"iVolume" : np.int64(0),		#成交总量
+	"iTurnover" : np.int64(0),		#成交总金额
+	"iOpenInterest" : np.int64(0),	#持仓总量
+	"nClose" : 0,					#今收盘
+	"nSettlePrice" : 0,				#今结算
+	"nHighLimited" : 0,				#涨停价
+	"nLowLimited" : 0,				#跌停价
+	"nPreDelta": 0,					#昨虚实度
+	"nCurrDelta" : 0,				#今虚实度
+	"nAskPrice" : [0]*5,			#申卖价
+	"nAskVol" : [0]*5,				#申卖量
+	"nBidPrice" : [0]*5,			#申买价
+	"nBidVol" : [0]*5				#申买量
+}
+#指数行情数据
+AD_Index = {
+	"chSecurityCode" : "00000000",	#指数代码
+	"nIndex" : 0,					#指数编号
+	"nDate" : 0,					#日期 yyyymmdd
+	"nTime" : 0,					#时间(HHMMSSmmmm)
+	"nOpenIndex" : 0,				#今开盘指数
+	"nHighIndex" : 0,				#最高指数
+	"nLowIndex" : 0,				#最低指数
+	"nLastIndex" : 0,				#最新指数
+	"iTotalVolume" : 0,				#参与计算相应指数的交易数量
+	"iTurnover" : 0,				#参与计算相应指数的成交金额
+	"nPreCloseIndex" : 0			#前收盘指数
+}
+#-----------------------------
+#获取结构体函数
+#-----------------------------
+#获得逐笔成交包
+def getTransactions(nItems):
+	pTransactions = []
+	for i in range(nItems):
+		pTransactions.append(copy.copy(AD_Transaction))
+	return pTransactions
+#获得买一队列包
+def getOrderQueue(nItems):
+	pQueues = []
+	pIdnums = []
+	for i in range(nItems):
+		pQueues.append(copy.copy(AD_OrderQueue))
+		pIdnums.append(0)
+	return pQueues, pIdnums
+#获得股票行情数据
+def getMarketData():
+	return copy.copy(MarketDataForTrade), 0
+#获得期货行情数据
+def getFutureMarketData():
+	return copy.copy(MarketDataForTrade_Future)
+#获得指数数据
+def getIndexMarketData():
+	return copy.copy(AD_Index)
+
