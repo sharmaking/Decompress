@@ -23,7 +23,7 @@ def main():
 		socketFun.subscibeStock(tcpCliSock, subStock)
 		print "1"
 		#请求数据
-		socketFun.requestCurrentDay(tcpCliSock, 1, datetime.time(12,01,00))
+		socketFun.requestCurrentDay(tcpCliSock, 0, datetime.time(12,01,00))
 		print "2"
 		#监听数据返回
 		socketFun.recvSubscibeRespond(tcpCliSock)

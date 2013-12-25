@@ -254,26 +254,26 @@ def DecompressIndexData(p):
 	pMarketData["nIndex"] = iData.value
 	#时间
 	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
-	pMarketData["nTime"]  = iData.value
+	pMarketData["nTime"]  = datetime.datetime.strptime(str(iData.value), "%H%M%S%f").time()
 	#今日开盘指数
 	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
-	pMarketData["nOpenIndex"] = iData.value
+	pMarketData["nOpenIndex"] = round(float(iData.value)/10000,2)
 	#今日最高指数
 	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
-	pMarketData["nHighIndex"] = iData.value + pMarketData["nOpenIndex"]
+	pMarketData["nHighIndex"] = round(float(iData.value)/10000,2) + pMarketData["nOpenIndex"]
 	#今日最低指数
 	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
-	pMarketData["nLowIndex"]  = iData.value + pMarketData["nOpenIndex"]
+	pMarketData["nLowIndex"]  = round(float(iData.value)/10000,2) + pMarketData["nOpenIndex"]
 	#今日最新指数
 	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
-	pMarketData["nLastIndex"] = iData.value + pMarketData["nOpenIndex"]
+	pMarketData["nLastIndex"] = round(float(iData.value)/10000,2) + pMarketData["nOpenIndex"]
 	#参与计算相应指数的交易数量
 	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
-	pMarketData["iTotalVolume"]	= iData.value
+	pMarketData["iTotalVolume"]	= int(iData.value)
 	#参与计算相应指数的成交金额
 	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
-	pMarketData["iTurnover"]	= iData.value
+	pMarketData["iTurnover"]	= round(float(iData.value)/100,2)
 	#前收指数
 	nSize = nSize + api.decompressData(ctypes.addressof(iData), ctypes.c_char_p(p[nSize:]))
-	pMarketData["nPreCloseIndex"] = iData.value + pMarketData["nOpenIndex"]
+	pMarketData["nPreCloseIndex"] = round(float(iData.value)/10000,2) + pMarketData["nOpenIndex"]
 	return nSize, pMarketData

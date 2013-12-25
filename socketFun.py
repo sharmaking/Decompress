@@ -138,7 +138,6 @@ def resolveIndexMarketData(bufferData):
 		nSize = nSize + nLength
 		pMarketData["chSecurityCode"] = g_stocks[str(pMarketData["nIndex"])]["chSecurityCode"]
 		pMarketData["nDate"] = g_currentDate
-
 		print pMarketData
 #解析接收的数据类型调用相应的方法
 def resolveRecvData(bufferData):
@@ -164,7 +163,6 @@ def resolveRecvData(bufferData):
 		resolveFutureMarketData(bufferData)
 	#解析指数数据
 	elif dataType == 5:
-		print "dataType:", dataType
 		resolveIndexMarketData(bufferData)
 #--------------------------------
 #接收解析socket数据，缓存拼接成完整数据
